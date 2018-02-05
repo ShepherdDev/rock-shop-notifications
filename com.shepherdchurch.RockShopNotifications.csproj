@@ -68,6 +68,7 @@
     <Compile Include="Jobs\RockShopFeed.cs" />
     <Compile Include="Migrations\001_AddSystemData.cs" />
     <Compile Include="Migrations\002_AddBlockSettings.cs" />
+    <Compile Include="Migrations\003_SetBlockSecurity.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SystemGuid\Attribute.cs" />
     <Compile Include="SystemGuid\Block.cs" />
