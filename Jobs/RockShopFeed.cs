@@ -28,12 +28,18 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
     {{ Release.Description }}
 </p>
 ", order: 2 )]
+    [BooleanField( "Display as Notifications", "Normally the new releases are posted as a check-list which is shared by all administrators. Notifications are per-user so when one user dismisses a notification, it will still remain for the others.", false, order: 3, Key = "DisplayAsNotifications")]
+    [SecurityRoleField( "Notification Group", "The security role whose members will receive notifications about new releases.", false, "", order: 4 )]
+    [EnumField( "Notification Type", "The type of notification to display the releases as.", typeof(Rock.Model.NotificationClassification), true, "1", order: 5 )]
     [DisallowConcurrentExecution]
     public class RockShopFeed : IJob
     {
         public virtual void Execute( IJobExecutionContext context )
         {
             JobDataMap dataMap = context.JobDetail.JobDataMap;
+            Rock.Model.NotificationClassification notificationClassification = dataMap.GetString( "NotificationType" ).ConvertToEnum<Rock.Model.NotificationClassification>( Rock.Model.NotificationClassification.Info );
+            bool displayAsNotifications = dataMap.GetString( "DisplayAsNotifications" ).AsBoolean( false );
+            List<int> notificationPersonAliasIds = null;
 
             //
             // Get all our configuration options.
@@ -42,6 +48,18 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             var daysBack = dataMap.GetString( "DaysBack" ).AsIntegerOrNull() ?? 30;
             var onlyShowUpdates = dataMap.GetString( "OnlyShowUpdates" ).AsBoolean();
             var checklistTemplate = dataMap.GetString( "ChecklistTemplate" );
+
+            //
+            // Get notification recipients if we are configured to do notifications.
+            //
+            if ( displayAsNotifications && !string.IsNullOrWhiteSpace( dataMap.GetString( "NotificationGroup" ) ) )
+            {
+                notificationPersonAliasIds = new Rock.Model.GroupService( new RockContext() ).Get( dataMap.GetString( "NotificationGroup" ).AsGuid() )
+                    .Members
+                    .Where( m => m.GroupMemberStatus == Rock.Model.GroupMemberStatus.Active )
+                    .Select( m => m.Person.PrimaryAliasId.Value )
+                    .ToList();
+            }
 
             var rockVersion = Rock.Utility.RockSemanticVersion.Parse( Rock.VersionInfo.VersionInfo.GetRockSemanticVersionNumber() );
             int newReleaseCount = 0;
@@ -134,8 +152,32 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
                     definedValue.LoadAttributes( rockContext );
                     definedValue.SetAttributeValue( "Release", release.Id );
 
-                    rockContext.SaveChanges();
+                    //
+                    // If they want to display as per-user notifications, then do so.
+                    //
+                    if ( displayAsNotifications )
+                    {
+                        var notificationService = new Rock.Model.NotificationService( rockContext );
+                        var notificationRecipientService = new Rock.Model.NotificationRecipientService( rockContext );
 
+                        var notification = new Rock.Model.Notification();
+
+                        notification.Title = definedValue.Value;
+                        notification.Message = definedValue.Description;
+                        notification.SentDateTime = RockDateTime.Now;
+                        notification.IconCssClass = string.Empty;
+                        notification.Classification = notificationClassification;
+                        notificationService.Add( notification );
+
+                        foreach ( var aliasId in notificationPersonAliasIds )
+                        {
+                            notification.Recipients.Add( new Rock.Model.NotificationRecipient { PersonAliasId = aliasId } );
+                        }
+
+                        definedValue.SetAttributeValue( "Completed", "True" );
+                    }
+
+                    rockContext.SaveChanges();
                     definedValue.SaveAttributeValues( rockContext );
 
                     newReleaseCount += 1;
