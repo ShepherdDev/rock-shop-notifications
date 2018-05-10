@@ -38,6 +38,7 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             //
             // Get all our configuration options.
             //
+            var now = RockDateTime.Now;
             var daysBack = dataMap.GetString( "DaysBack" ).AsIntegerOrNull() ?? 30;
             var onlyShowUpdates = dataMap.GetString( "OnlyShowUpdates" ).AsBoolean();
             var checklistTemplate = dataMap.GetString( "ChecklistTemplate" );
@@ -53,7 +54,8 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             //
             // Get all releases.
             //
-            var releases = GetRecentVersions( daysBack )
+            var allReleases = GetAllVersions().ToList();
+            var recentReleases = GetRecentVersions( allReleases, daysBack )
                 .OrderBy( v => v.ModifiedDateTime )
                 .ToList();
 
@@ -61,7 +63,7 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             // Associate all releases with their package.
             //
             var allPackages = GetAllPackages();
-            releases.ForEach( r => r.Package = allPackages.FirstOrDefault( p => p.Id == r.PackageId ) );
+            allReleases.ForEach( r => r.Package = allPackages.FirstOrDefault( p => p.Id == r.PackageId ) );
 
             //
             // Generate all the new defined values.
@@ -72,12 +74,28 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
                 var definedValueService = new Rock.Model.DefinedValueService( rockContext );
                 int nextOrder = definedTypeCache.DefinedValues.Select( dv => dv.Order ).DefaultIfEmpty().Max() + 1;
 
-                foreach ( var release in releases )
+                foreach ( var release in recentReleases )
                 {
                     //
                     // If we have already posted this release to the checklist then skip it.
                     //
                     if ( definedTypeCache.DefinedValues.Any( dv => dv.GetAttributeValue( "Release" ).AsInteger() == release.Id ) )
+                    {
+                        continue;
+                    }
+
+                    //
+                    // Skip a new release if it is less than 7 days old.
+                    //
+                    if ( allReleases.Count( r => r.PackageId == release.PackageId ) == 1 && now.Subtract( release.ModifiedDateTime ).TotalDays < 7 )
+                    {
+                        continue;
+                    }
+
+                    //
+                    // Skip an update release if it is less than 3 days old.
+                    //
+                    if ( allReleases.Count( r => r.PackageId == release.PackageId ) >= 2 && now.Subtract( release.ModifiedDateTime ).TotalDays < 3 )
                     {
                         continue;
                     }
@@ -158,13 +176,13 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             }
         }
 
+
         /// <summary>
         /// Gets all packages.
         /// </summary>
-        /// <returns></returns>
-        private IEnumerable<PackageVersion> GetRecentVersions( int daysBack )
+        /// <returns>A collection of all versions that have been released.</returns>
+        private IEnumerable<PackageVersion> GetAllVersions()
         {
-            var limitDate = DateTime.Now.AddDays( -daysBack );
             var client = new RestClient( ConfigurationManager.AppSettings["RockStoreUrl"] )
             {
                 Timeout = 15000
@@ -174,27 +192,42 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
                 Method = Method.GET,
                 Resource = "Api/PackageVersions"
             };
-            request.AddParameter( "$filter", string.Format( "ModifiedDateTime gt DateTime'{0}'", limitDate.ToString( "yyyy-MM-dd" ) ) );
 
             var response = client.Execute<List<PackageVersion>>( request );
 
             if ( response.ResponseStatus == ResponseStatus.Completed )
             {
                 //
-                // Filter client-side by Status == 2 (released) and also filter out
-                // any versions that were created more than 90 days before they were
-                // last modified. This helps remove items that were modified by the Spark
-                // team after release.
+                // Filter client-side by Status == 2 (released).
                 //
                 return response.Data
                     .Where( v => v.Status == 2 )
-                    .Where( v => v.ModifiedDateTime.Subtract(v.CreatedDateTime).TotalDays < 90 )
                     .ToList();
             }
             else
             {
                 return new List<PackageVersion>();
             }
+        }
+
+        /// <summary>
+        /// Gets all packages.
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<PackageVersion> GetRecentVersions( IEnumerable<PackageVersion> versions, int daysBack )
+        {
+            var limitDate = DateTime.Now.AddDays( -daysBack );
+
+            //
+            // Filter items to those last modified (released) within the limit date and also filter
+            // out any versions that were created more than 90 days before they were
+            // last modified. This helps remove items that were modified by the Spark
+            // team after release.
+            //
+            return versions
+                .Where( v => v.ModifiedDateTime > limitDate )
+                .Where( v => v.ModifiedDateTime.Subtract( v.CreatedDateTime ).TotalDays < 90 )
+                .ToList();
         }
 
         #region Support Classes
