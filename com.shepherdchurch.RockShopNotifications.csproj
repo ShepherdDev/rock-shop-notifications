@@ -31,27 +31,37 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="DotLiquid, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+    <Reference Include="DotLiquid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\RockWeb\Bin\DotLiquid.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="EntityFramework">
       <HintPath>..\RockWeb\Bin\EntityFramework.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\RockWeb\Bin\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Quartz">
       <HintPath>..\..\..\Documents\Rock\RockWeb\Bin\Quartz.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="RestSharp, Version=105.2.3.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\RockWeb\Bin\RestSharp.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Rock">
       <HintPath>..\RockWeb\Bin\Rock.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Rock.Version, Version=1.8.0.6, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\RockWeb\Bin\Rock.Version.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
