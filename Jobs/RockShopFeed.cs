@@ -86,7 +86,7 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
             //
             // Generate all the new defined values.
             //
-            var definedTypeCache = Rock.Web.Cache.DefinedTypeCache.Read( SystemGuid.DefinedType.RECENT_PLUGINS.AsGuid() );
+            var definedTypeCache = Rock.Web.Cache.DefinedTypeCache.Get( SystemGuid.DefinedType.RECENT_PLUGINS.AsGuid() );
             using ( var rockContext = new RockContext() )
             {
                 var definedValueService = new Rock.Model.DefinedValueService( rockContext );
@@ -160,13 +160,14 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
                         var notificationService = new Rock.Model.NotificationService( rockContext );
                         var notificationRecipientService = new Rock.Model.NotificationRecipientService( rockContext );
 
-                        var notification = new Rock.Model.Notification();
-
-                        notification.Title = definedValue.Value;
-                        notification.Message = definedValue.Description;
-                        notification.SentDateTime = RockDateTime.Now;
-                        notification.IconCssClass = string.Empty;
-                        notification.Classification = notificationClassification;
+                        var notification = new Rock.Model.Notification
+                        {
+                            Title = definedValue.Value,
+                            Message = definedValue.Description,
+                            SentDateTime = RockDateTime.Now,
+                            IconCssClass = string.Empty,
+                            Classification = notificationClassification
+                        };
                         notificationService.Add( notification );
 
                         foreach ( var aliasId in notificationPersonAliasIds )
@@ -184,7 +185,7 @@ namespace com.shepherdchurch.RockShopNotifications.Jobs
                 }
             }
 
-            Rock.Web.Cache.DefinedTypeCache.Flush( definedTypeCache.Id );
+            Rock.Web.Cache.DefinedTypeCache.Remove( definedTypeCache.Id );
 
             context.Result = string.Format( "Found {0} new {1}.", newReleaseCount, "release".PluralizeIf( newReleaseCount != 1 ) );
         }
