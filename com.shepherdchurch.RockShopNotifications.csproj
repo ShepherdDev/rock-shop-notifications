@@ -46,7 +46,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="Quartz">
-      <HintPath>..\..\..\Documents\Rock\RockWeb\Bin\Quartz.dll</HintPath>
+      <HintPath>..\RockWeb\Bin\Quartz.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RestSharp, Version=105.2.3.0, Culture=neutral, processorArchitecture=MSIL">
